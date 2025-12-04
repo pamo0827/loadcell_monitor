@@ -35,6 +35,7 @@ Arduino MegaとHX711ロードセルアンプを使用して、重量をリアル
 - **calibrate_loadcell.py** - ロードセルのキャリブレーション
 - **tare_loadcell.py** - ゼロ点調整（風袋引き）
 - **reset_loadcell.py** - センサーのリセット
+- **monitor_weight_voice.py** - 音声報告機能（ずんだもん）⭐ NEW!
 
 ## 使い方
 
@@ -73,6 +74,23 @@ python3 tare_loadcell.py
 # 対話的にキャリブレーションを実行
 python3 calibrate_loadcell.py
 ```
+
+### 6. 音声報告機能（ずんだもん）⭐ NEW!
+
+```bash
+# VOICEVOXを起動してから実行
+# 50g単位で重量が変化すると、ずんだもんが音声で報告します
+python3 monitor_weight_voice.py
+```
+
+**機能：**
+- 重量を50g単位で監視
+- 重量が安定すると、ずんだもんが音声で報告
+- 例：「50グラムなのだ」「100グラムなのだ」
+
+**必要な環境：**
+- VOICEVOX（音声合成エンジン）が起動していること
+- [VOICEVOX公式サイト](https://voicevox.hiroshiba.jp/)からダウンロード
 
 ## シリアルコマンド
 
