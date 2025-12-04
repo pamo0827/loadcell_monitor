@@ -1,61 +1,22 @@
 #!/usr/bin/env python3
 import serial
 import time
-import requests
-import json
 import subprocess
-import tempfile
-import os
 
 # ロードセルのシリアルポート設定
 PORT = '/dev/cu.usbmodem101'
 BAUDRATE = 9600
 
-# ずんだもんの話者ID (VOICEVOX)
-ZUNDAMON_SPEAKER_ID = 3  # ずんだもん（ノーマル）
-
-# VOICEVOX API設定
-VOICEVOX_URL = "http://localhost:50021"
-
 # 50g単位で報告
 WEIGHT_THRESHOLD = 50
 
-def speak_with_zundamon(text):
-    """VOICEVOXを使って音声を再生"""
+def speak_with_say(text):
+    """macOSのsayコマンドを使って音声を再生"""
     try:
-        # 1. 音声クエリを生成
-        query_response = requests.post(
-            f"{VOICEVOX_URL}/audio_query",
-            params={"text": text, "speaker": ZUNDAMON_SPEAKER_ID}
-        )
-        query_response.raise_for_status()
-        query_json = query_response.json()
-
-        # 2. 音声を合成
-        synthesis_response = requests.post(
-            f"{VOICEVOX_URL}/synthesis",
-            params={"speaker": ZUNDAMON_SPEAKER_ID},
-            json=query_json
-        )
-        synthesis_response.raise_for_status()
-
-        # 3. 音声データを一時ファイルに保存
-        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_file:
-            temp_file.write(synthesis_response.content)
-            temp_path = temp_file.name
-
-        # 4. afplayで再生
-        subprocess.run(['afplay', temp_path], check=True)
-
-        # 5. 一時ファイルを削除
-        os.unlink(temp_path)
-
-        print(f"🔊 ずんだもん: {text}")
+        # 日本語音声で読み上げ（Kyokoは日本語音声）
+        subprocess.run(["say", "-v", "Kyoko", text], check=True)
+        print(f"🔊 音声: {text}")
         return True
-
-    except requests.exceptions.RequestException as e:
-        print(f"VOICEVOX APIエラー: {e}")
-        return False
     except Exception as e:
         print(f"音声再生エラー: {e}")
         return False
@@ -107,15 +68,15 @@ def monitor_weight():
                             if weight_diff >= WEIGHT_THRESHOLD:
                                 print(f"\n[報告] 重量: {rounded_weight:.0f}g")
 
-                                # ずんだもんで報告
+                                # sayコマンドで報告
                                 if rounded_weight == 0:
-                                    message = "重さは0グラムなのだ"
+                                    message = "重さは0グラムです"
                                 elif rounded_weight < 0:
-                                    message = f"マイナス{abs(int(rounded_weight))}グラムなのだ"
+                                    message = f"マイナス{abs(int(rounded_weight))}グラムです"
                                 else:
-                                    message = f"{int(rounded_weight)}グラムなのだ"
+                                    message = f"{int(rounded_weight)}グラムです"
 
-                                speak_with_zundamon(message)
+                                speak_with_say(message)
 
                                 last_reported_weight = rounded_weight
                                 stable_count = 0  # リセット
@@ -140,13 +101,13 @@ def monitor_weight():
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("  ロードセル音声モニター with ずんだもん")
+    print("  ロードセル音声モニター with macOS Say")
     print("=" * 60)
     print()
     print("使い方:")
-    print("  1. VOICEVOXを起動してください")
-    print("  2. ロードセルに物を載せると、50g単位で重量を報告します")
-    print("  3. 安定した重量になると、ずんだもんが喋ります")
+    print("  1. ロードセルに物を載せると、50g単位で重量を報告します")
+    print("  2. 安定した重量になると、音声で読み上げます")
+    print("  3. Ctrl+Cで終了")
     print()
 
     monitor_weight()
