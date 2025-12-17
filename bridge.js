@@ -4,52 +4,9 @@ import { ReadlineParser } from '@serialport/parser-readline';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import fs from 'fs';
-import player from 'play-sound';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-
-// 音声プレイヤーの初期化
-const audioPlayer = player({});
-
-// 音声ファイルのパス
-const SOUND_FILES = {
-  SPARKLE: join(__dirname, 'きらきら輝く6.mp3'),
-  EXPLOSION: join(__dirname, '爆発2.mp3'),
-  STEP_COMPLETE: join(__dirname, '地震魔法1.mp3')
-};
-
-// 音声再生関数
-function playSound(soundType, repeat = 1) {
-  const soundPath = SOUND_FILES[soundType];
-
-  if (!fs.existsSync(soundPath)) {
-    console.error(`❌ 音声ファイルが見つかりません: ${soundPath}`);
-    return;
-  }
-
-  console.log(`🔊 音声再生: ${soundType} (${repeat}回)`);
-
-  let playCount = 0;
-
-  function playNext() {
-    if (playCount >= repeat) return;
-
-    audioPlayer.play(soundPath, (err) => {
-      if (err) {
-        console.error(`❌ 音声再生エラー:`, err.message);
-      } else {
-        playCount++;
-        if (playCount < repeat) {
-          // 次の再生まで少し待つ
-          setTimeout(playNext, 500);
-        }
-      }
-    });
-  }
-
-  playNext();
-}
 
 // Firebase Admin SDK初期化
 const serviceAccountPath = join(__dirname, 'serviceAccountKey.json');
@@ -203,18 +160,30 @@ async function connectToArduino() {
 
       // 音声再生コマンドを検知
       if (data.includes('SOUND:STEP_COMPLETE')) {
-        console.log('🎉 ステップ完了！地震魔法音を再生');
-        playSound('STEP_COMPLETE', 1);
+        console.log('🎉 ステップ完了！アプリで地震魔法音を再生');
+        db.ref('cocktail/sound').set({
+          type: 'STEP_COMPLETE',
+          repeat: 1,
+          timestamp: Date.now()
+        });
       }
 
       if (data.includes('SOUND:SPARKLE')) {
-        console.log('✨ 90ml達成！きらきら音を再生');
-        playSound('SPARKLE', 1);
+        console.log('✨ 90ml達成！アプリできらきら音を再生');
+        db.ref('cocktail/sound').set({
+          type: 'SPARKLE',
+          repeat: 1,
+          timestamp: Date.now()
+        });
       }
 
       if (data.includes('SOUND:EXPLOSION')) {
-        console.log('💥 超過警告！爆発音を再生');
-        playSound('EXPLOSION', 3);
+        console.log('💥 超過警告！アプリで爆発音を再生');
+        db.ref('cocktail/sound').set({
+          type: 'EXPLOSION',
+          repeat: 3,
+          timestamp: Date.now()
+        });
       }
     });
 
