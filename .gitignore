@@ -26,3 +26,10 @@ ENV/
 *.elf
 *.o
 *.a
+
+# Node.js
+node_modules/
+package-lock.json
+
+# Firebase
+serviceAccountKey.json

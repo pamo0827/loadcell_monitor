@@ -1,0 +1,23 @@
+{
+  "name": "loadcell-monitor-bridge",
+  "version": "1.0.0",
+  "description": "Firebase to Arduino Serial Bridge for Cocktail Maker",
+  "main": "bridge.js",
+  "type": "module",
+  "scripts": {
+    "start": "node bridge.js"
+  },
+  "keywords": [
+    "arduino",
+    "firebase",
+    "serial"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@serialport/parser-readline": "^13.0.0",
+    "firebase-admin": "^13.6.0",
+    "play-sound": "^1.1.6",
+    "serialport": "^13.0.0"
+  }
+}
