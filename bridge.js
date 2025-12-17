@@ -149,6 +149,21 @@ async function connectToArduino() {
         });
       }
 
+      // Pouringメッセージを受信した場合も風袋引き完了とみなす
+      if (data.includes('Pouring:') && data.includes('Orange Juice')) {
+        // 初回のPouringメッセージでisTaringをfalseに
+        db.ref('cocktail/status').once('value', (snapshot) => {
+          const currentData = snapshot.val();
+          if (currentData?.isTaring) {
+            console.log('⚖️ 注入開始を検知 - 風袋引き完了とみなします');
+            db.ref('cocktail/status').update({
+              isTaring: false,
+              currentStep: 1
+            });
+          }
+        });
+      }
+
       // ステップ完了を検知
       if (data.includes('Step OK')) {
         console.log('✅ ステップ完了');
