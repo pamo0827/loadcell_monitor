@@ -1,134 +1,95 @@
-# Load Cell Monitor
+# カクテルメーカー モバイルアプリ
 
-HX711ロードセルセンサーを使用した重量測定システム
+シンデレラ調合システム用のReact Native（Expo）アプリです。
 
-## 概要
+## 機能
 
-Arduino MegaとHX711ロードセルアンプを使用して、重量をリアルタイムで測定・表示するプロジェクトです。PythonスクリプトでArduinoと通信し、重量データの読み取り、キャリブレーション、風袋引きが可能です。
+- **調合開始**: カクテルの調合を開始します
+- **調合完了**: カクテルの調合を完了します
+- Firebase Realtime Databaseを使用してArduinoと通信
 
-## ハードウェア構成
+## セットアップ手順
 
-- **Arduino Mega 2560**
-- **HX711 Load Cell Amplifier**
-- **Load Cell**（ロードセル）
+### 1. Firebase プロジェクトの作成
 
-### 配線
+1. [Firebase Console](https://console.firebase.google.com/) にアクセス
+2. 新しいプロジェクトを作成
+3. Realtime Databaseを有効化
+4. プロジェクト設定から、Webアプリの構成情報を取得
 
-- HX711 DT pin → Arduino Mega pin 53
-- HX711 SCK pin → Arduino Mega pin 51
-- HX711 VCC → Arduino 5V
-- HX711 GND → Arduino GND
+### 2. Firebase設定ファイルの更新
 
-## ファイル構成
+`firebaseConfig.js` を開いて、Firebaseプロジェクトの設定情報を入力してください：
 
-### Arduino スケッチ
+```javascript
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_AUTH_DOMAIN",
+  databaseURL: "YOUR_DATABASE_URL", // 重要！
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_STORAGE_BUCKET",
+  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+```
 
-- **arduino_loadcell.ino** - メインのArduinoプログラム
-  - HX711センサーの初期化と設定
-  - リアルタイム重量測定
-  - シリアル通信によるコマンド受信
-  - キャリブレーション係数: -434.0 (5g基準)
+### 3. アプリの起動
 
-### Python スクリプト
+```bash
+# 依存関係をインストール（既にインストール済みの場合はスキップ）
+npm install
 
-- **read_loadcell.py** - 重量データのリアルタイム読み取り
-- **calibrate_loadcell.py** - ロードセルのキャリブレーション
-- **tare_loadcell.py** - ゼロ点調整（風袋引き）
-- **reset_loadcell.py** - センサーのリセット
-- **monitor_weight_voice.py** - 音声報告機能（ずんだもん）⭐ NEW!
+# Expo Goアプリを起動
+npm start
+```
+
+### 4. Expo Goアプリで実行
+
+1. スマートフォンに [Expo Go](https://expo.dev/client) アプリをインストール
+2. ターミナルに表示されたQRコードをスキャン
+3. アプリが起動します
 
 ## 使い方
 
-### 1. Arduinoのセットアップ
+1. **調合開始**ボタンをタップして、シンデレラの調合を開始します
+2. Arduino側でLEDが光り始め、調合プロセスが開始されます
+3. 調合が完了したら、**調合完了**ボタンをタップします
 
-```bash
-# Arduino IDEまたはarduino-cliでスケッチをアップロード
-arduino-cli compile --fqbn arduino:avr:mega arduino_loadcell.ino
-arduino-cli upload -p /dev/cu.usbmodem101 --fqbn arduino:avr:mega arduino_loadcell.ino
+## Firebase Realtime Database構造
+
+```json
+{
+  "cocktail": {
+    "status": {
+      "isBlending": true,
+      "timestamp": 1234567890
+    }
+  }
+}
 ```
 
-### 2. Python環境のセットアップ
+## トラブルシューティング
+
+### Firebaseに接続できない
+
+- `firebaseConfig.js` の設定が正しいか確認してください
+- Firebase ConsoleでRealtime Databaseが有効になっているか確認してください
+- Realtime Databaseのルールを確認してください（開発中は読み書き許可に設定）
+
+### アプリが起動しない
 
 ```bash
-# 必要なライブラリのインストール
-pip3 install pyserial
+# キャッシュをクリアして再起動
+npm start -- --clear
 ```
 
-### 3. 重量の読み取り
+## 今後の拡張案
 
-```bash
-# リアルタイムで重量を表示
-python3 read_loadcell.py
-```
+- リアルタイムで重量を表示
+- LEDの色をアプリから確認
+- 複数のレシピを選択できるように
+- 調合履歴の記録
 
-### 4. ゼロ点調整
+---
 
-```bash
-# ロードセルに何も載せていない状態で実行
-python3 tare_loadcell.py
-```
-
-### 5. キャリブレーション
-
-```bash
-# 対話的にキャリブレーションを実行
-python3 calibrate_loadcell.py
-```
-
-### 6. 音声報告機能（ずんだもん）⭐ NEW!
-
-```bash
-# VOICEVOXを起動してから実行
-# 50g単位で重量が変化すると、ずんだもんが音声で報告します
-python3 monitor_weight_voice.py
-```
-
-**機能：**
-- 重量を50g単位で監視
-- 重量が安定すると、ずんだもんが音声で報告
-- 例：「50グラムなのだ」「100グラムなのだ」
-
-**必要な環境：**
-- VOICEVOX（音声合成エンジン）が起動していること
-- [VOICEVOX公式サイト](https://voicevox.hiroshiba.jp/)からダウンロード
-
-## シリアルコマンド
-
-Arduinoは以下のシリアルコマンドを受け付けます：
-
-- **t** または **T** - ゼロ点調整（Tare）
-- **r** または **R** - センサーリセット
-- **d** または **D** - デバッグ情報表示
-
-## キャリブレーション方法
-
-1. Arduinoを起動（自動的にゼロ点調整が実行されます）
-2. 既知の重量（例：5g）のおもりを載せる
-3. 表示される生データ（Raw値）を確認
-4. キャリブレーション係数を計算：`係数 = 生データ / 実際の重量`
-5. `arduino_loadcell.ino`の`setCalFactor()`の値を更新
-6. 再度スケッチをアップロード
-
-### 現在の設定
-
-- **キャリブレーション係数**: -434.0
-- **基準重量**: 5g
-- **生データ**: -2170（5g載せた時）
-
-## 依存関係
-
-### Arduino
-
-- [HX711_ADC Library](https://github.com/olkal/HX711_ADC)
-
-### Python
-
-- pyserial
-
-## ライセンス
-
-MIT License
-
-## 作成者
-
-Created with Claude Code
+開発: カクテルメーカープロジェクト

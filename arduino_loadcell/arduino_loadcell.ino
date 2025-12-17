@@ -5,7 +5,6 @@
 const int HX711_dout = 53;
 const int HX711_sck = 51;
 const int LED_PIN = A0;
-const int BUZZER_PIN = 12; // 追加: ブザー用ピン
 const int NUMPIXELS = 16;
 
 HX711_ADC LoadCell(HX711_dout, HX711_sck);
@@ -37,7 +36,7 @@ const uint32_t COL_LEMON  = 0xCCFF00; // レモン色
 const uint32_t COL_GINGER = 0xCD853F; // 茶色っぽいゴールド
 const uint32_t COL_SODA   = 0xE0FFFF; // 薄い水色
 
-Recipe recipes[3] = {
+Recipe recipes[1] = {
   {
     "Cinderella (Standard)", 3,
     {
@@ -46,37 +45,16 @@ Recipe recipes[3] = {
       {"Lemon Juice", 10.0, COL_LEMON}
     },
     true // シンデレラ特別演出モード有効
-  },
-  {
-    "Sunrise Style", 3,
-    {
-      {"Orange Juice", 80.0, COL_ORANGE},
-      {"Pineapple Juice", 15.0, COL_PINE},
-      {"Ginger Syrup", 8.0, COL_GINGER}
-    },
-    false // 通常モード
-  },
-  {
-    "Tropical Punch", 5,
-    {
-      {"Orange Juice", 40.0, COL_ORANGE},
-      {"Pineapple Juice", 40.0, COL_PINE},
-      {"Lemon Juice", 10.0, COL_LEMON},
-      {"Ginger Syrup", 5.0, COL_GINGER},
-      {"Ginger Ale", 90.0, COL_SODA}
-    },
-    false // 通常モード
   }
 };
 
-int currentRecipeIndex = -1;
+int currentRecipeIndex = 0; // Default to Cinderella
 int currentStepIndex = 0;
 float startWeight = 0; // 各ステップ開始時の重量
 float cumulativeWeight = 0; // シンデレラ特別演出用の累積重量
 
 void setup() {
   Serial.begin(9600);
-  pinMode(BUZZER_PIN, OUTPUT);
   
   pixels.begin();
   pixels.clear();
@@ -93,57 +71,8 @@ void setup() {
 
 void printMenu() {
   Serial.println("\n--- Select Menu ---");
-  Serial.println("1: Cinderella");
-  Serial.println("2: Sunrise Style");
-  Serial.println("3: Tropical Punch");
-  Serial.println("Type number to start.");
-}
-
-// 音響エフェクト関数群
-
-// ヘルパー: 指定周波数と長さで再生
-void playTone(int freq, int duration) {
-  tone(BUZZER_PIN, freq, duration);
-  delay(duration);
-  noTone(BUZZER_PIN);
-}
-
-// 1. 微量注入時: 魔法の雫音 (ポチャン + キラッ)
-void playMagicDroplet() {
-  // 急速なアルペジオで「ピロリ」感を出す
-  tone(BUZZER_PIN, 1200, 30); delay(35);
-  tone(BUZZER_PIN, 2000, 30); delay(35);
-  noTone(BUZZER_PIN);
-}
-
-// 2. ステップ完了時: 調合・融合音 (シュワワワ〜ン)
-void playMixComplete() {
-  // 周波数をスイープさせて「吸い込まれる/混ざる」ような音
-  for (int i = 400; i <= 2000; i += 80) {
-    tone(BUZZER_PIN, i, 15);
-    delay(10); // スイープ速度
-  }
-  // 最後にキラリン
-  tone(BUZZER_PIN, 2500, 200);
-  delay(200);
-  noTone(BUZZER_PIN);
-}
-
-// 3. レシピ完成時: 魔法の大成功ファンファーレ
-void playPotionSuccess() {
-  // タラララ・タラララ・ターン！
-  int melody[] = {1000, 1200, 1500, 2000, 0, 1000, 1200, 1500, 2400};
-  int noteDurations[] = {100, 100, 100, 300, 100, 100, 100, 100, 600};
-
-  for (int i = 0; i < 9; i++) {
-    if (melody[i] == 0) {
-      delay(noteDurations[i]);
-    } else {
-      tone(BUZZER_PIN, melody[i], noteDurations[i]);
-      delay(noteDurations[i] * 1.3);
-    }
-  }
-  noTone(BUZZER_PIN);
+  Serial.println("1: Start Cinderella Mode");
+  Serial.println("Type '1' to start.");
 }
 
 // ユーティリティ: HSVからRGBへの変換 (滑らかな色変化のため)
@@ -159,40 +88,6 @@ uint32_t wheel(byte WheelPos) {
   WheelPos -= 170;
   return pixels.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
 }
-
-// 暖色系グラデーション生成関数
-// heat: 0.0 (冷たい/暗い) 〜 1.0 (熱い/明るい)
-// t: 時間変数 (アニメーション用)
-uint32_t getWarmColor(float heat, int pixelIndex, unsigned long t) {
-  // 暖色パレット: 赤 -> オレンジ -> 黄 -> 白
-  // 赤(0, 255, 0) ※GRB順注意 -> 緑(255, 255, 0) ※GRB
-  // Adafruit_NeoPixelは RGB ではなく GRB の順でデータを受け取ることがあるが
-  // Color(r, g, b) メソッドは RGB で指定する。
-  
-  // ベースの色相を計算 (赤〜黄色〜白)
-  // heat 0.0 -> 赤 (255, 0, 0)
-  // heat 0.5 -> オレンジ (255, 100, 0)
-  // heat 0.8 -> 黄 (255, 200, 0)
-  // heat 1.0 -> 白 (255, 255, 255)
-
-  int r = 255;
-  int g = (int)(heat * 200); // 緑成分を足すと黄色になる
-  int b = (heat > 0.8) ? (int)((heat - 0.8) * 5 * 255) : 0; // 最後の方で青を足して白にする
-
-  // ゆらぎを加える (正弦波)
-  float wave = sin((t / 300.0) + (pixelIndex * 0.5)); // -1 ~ 1
-  
-  // 明るさのゆらぎ
-  int brightness = 150 + (int)(wave * 100); // 50 ~ 250
-  
-  // 色ごとの微調整
-  r = (r * brightness) / 255;
-  g = (g * brightness) / 255;
-  b = (b * brightness) / 255;
-
-  return pixels.Color(r, g, b);
-}
-
 
 // シンデレラ専用の演出関数
 void updateCinderellaVisuals(float totalWeight) {
@@ -241,38 +136,6 @@ void updateCinderellaVisuals(float totalWeight) {
   pixels.show();
 }
 
-void updateVisualsAndSound(float currentVal, float targetVal, uint32_t color) {
-  float progress = currentVal / targetVal;
-  if (progress < 0) progress = 0;
-  // 上限キャップなし（溢れる表現のため）
-
-  // アニメーション用の時間
-  unsigned long t = millis();
-
-  pixels.clear();
-
-  // 全てのLEDに対して計算
-  for(int i=0; i<NUMPIXELS; i++) {
-    // 進行度に応じて「熱量」を変える
-    // ターゲットに近づくほど heat が高くなる
-    float heat = progress;
-
-    // オーバーフローしたら少し色が狂う演出
-    if (progress > 1.1) {
-       heat = 1.0 + sin(t/100.0) * 0.2; // 点滅
-    }
-
-    // 通常モード: マグマのような暖色
-    // ピクセルごとに少し位相をずらして「うねり」を作る
-    float localHeat = constrain(heat + sin(t/1000.0 + i*0.3)*0.1, 0.0, 1.0);
-    uint32_t c = getWarmColor(localHeat, i, t);
-
-    pixels.setPixelColor(i, c);
-  }
-
-  pixels.show();
-}
-
 void loop() {
   LoadCell.update();
   float weight = LoadCell.getData();
@@ -281,8 +144,8 @@ void loop() {
   if (Serial.available() > 0) {
     char inByte = Serial.read();
     if (currentState == IDLE || currentState == RECIPE_FINISHED) {
-      if (inByte >= '1' && inByte <= '3') {
-        currentRecipeIndex = inByte - '1';
+      if (inByte == '1') {
+        currentRecipeIndex = 0; // Always Cinderella
         currentStepIndex = 0;
         cumulativeWeight = 0; // 累積重量をリセット
         currentState = TARE_WAIT;
@@ -314,11 +177,6 @@ void loop() {
       if (LoadCell.getTareStatus() || (millis() - tareStartTime > 4000)) {
         if (!LoadCell.getTareStatus()) {
            Serial.println("Tare timeout (unstable?) - Forcing start.");
-           // 強制的に現在の値を0点とするためのライブラリハック、
-           // または単に今の値をオフセットとして記録する手もあるが、
-           // ここでは単に次へ進む。本来は setTareOffset を呼ぶべきだが
-           // ライブラリの仕様上、update()内で処理されるため、
-           // とりあえず "Tare Complete" とみなす。
         } else {
            Serial.println("Tare Complete.");
         }
@@ -339,16 +197,8 @@ void loop() {
       Ingredient currentIng = recipes[currentRecipeIndex].steps[currentStepIndex];
       float currentAdded = weight; // tareされているので現在の重量＝追加分
 
-      // シンデレラ特別演出モードの場合
-      bool isSpecialMode = recipes[currentRecipeIndex].isSpecialCinderella;
-
-      if (isSpecialMode) {
-        // シンデレラモード: 累積重量で演出
-        updateCinderellaVisuals(cumulativeWeight + currentAdded);
-      } else {
-        // 通常モード: 光の更新
-        updateVisualsAndSound(currentAdded, currentIng.targetWeight, currentIng.color);
-      }
+      // シンデレラモードのみなので常にupdateCinderellaVisuals
+      updateCinderellaVisuals(cumulativeWeight + currentAdded);
 
       // --- リアルタイム重量表示 (追加) ---
       static unsigned long lastSerialPrintTime = 0;
@@ -374,7 +224,7 @@ void loop() {
       }
 
       // 最後のステップ（レモンジュース）の特別処理
-      bool isLastStepInCinderella = isSpecialMode && (currentStepIndex == recipes[currentRecipeIndex].stepCount - 1);
+      bool isLastStepInCinderella = (currentStepIndex == recipes[currentRecipeIndex].stepCount - 1);
 
       if (isLastStepInCinderella) {
         // 累積90mlで完了（きらきら音がレモンジュース完了の合図）
@@ -393,7 +243,7 @@ void loop() {
           currentState = STEP_COMPLETED;
         }
       } else {
-        // 通常のステップの完了判定
+        // 通常のステップの完了判定（地震魔法音）
         float tolerance = 3.0; // 許容誤差: 3g
 
         if (currentAdded >= (currentIng.targetWeight - tolerance) &&
@@ -402,10 +252,8 @@ void loop() {
           Serial.println("Target reached!");
           Serial.println("SOUND:STEP_COMPLETE"); // PCで「地震魔法1.mp3」を再生
 
-          // 累積重量を更新（シンデレラモード用）
-          if (isSpecialMode) {
-            cumulativeWeight += currentAdded;
-          }
+          // 累積重量を更新
+          cumulativeWeight += currentAdded;
 
           // フラグをリセット
           playedExplosionSound = false;
